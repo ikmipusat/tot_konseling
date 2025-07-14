@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cetak Sertifikat</title>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  </head>
+  <body>
+    <script>
+      window.onload = async () => {
+        const { jsPDF } = window.jspdf;
+
+        // Ambil data dari localStorage
+        const judul = localStorage.getItem("judul");
+        const nama =
+          localStorage.getItem("namaPeserta") || "Nama Tidak Ditemukan";
+        const sebagai =
+          localStorage.getItem("sebagai") || "Peran Tidak Ditemukan";
+        const textX = parseFloat(localStorage.getItem("textX")) || 80;
+        const textY = parseFloat(localStorage.getItem("textY")) || 0;
+        const fontSize = parseInt(localStorage.getItem("fontSize")) || 10;
+        const fontStyle = localStorage.getItem("fontStyle") || "normal";
+
+        // Fungsi untuk load gambar sebagai data URL
+        async function loadImageAsDataURL(url) {
+          const response = await fetch(url);
+          const blob = await response.blob();
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+        }
+
+        const img1 = await loadImageAsDataURL("img/front.jpg");
+        const img2 = await loadImageAsDataURL("img/back.jpg");
+
+        // Buat dokumen PDF
+        const doc = new jsPDF({
+          orientation: "landscape",
+          unit: "mm",
+          format: "a4",
+        });
+
+        // Halaman 1
+        doc.addImage(img1, "JPEG", 0, 0, 297, 210);
+        doc.setFont("Times", fontStyle);
+        doc.setFontSize(fontSize);
+        doc.text(nama, textX, textY, { align: "center" });
+        doc.setFontSize(fontSize);
+        doc.text(sebagai, textX, textY + 25, { align: "center" });
+
+        // Halaman 2
+        doc.addPage("a4", "landscape");
+        doc.addImage(img2, "JPEG", 0, 0, 297, 210);
+
+        // Simpan PDF
+        doc.save(`${nama}_${judul}.pdf`);
+
+        // Tampilkan SweetAlert "berhasil"
+        Swal.fire({
+          icon: "success",
+          title: "Sertifikat berhasil di-download!",
+          text: `${nama}_${judul}.pdf`,
+          timer: 2500,
+          showConfirmButton: false,
+        });
+
+        // Tutup otomatis setelah delay
+        setTimeout(() => window.close(), 2000);
+      };
+    </script>
+  </body>
+</html>

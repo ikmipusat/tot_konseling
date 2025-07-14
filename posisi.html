@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview Sertifikat</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      .controls {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        width: 300px;
+      }
+      .control-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+      .value-display {
+        display: inline-block;
+        width: 40px;
+        text-align: right;
+        margin-left: 10px;
+      }
+      #previewCanvas {
+        max-width: 100%;
+        border: 1px solid #ddd;
+        margin-top: 20px;
+        display: block;
+      }
+      #downloadBtn {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        width: 100%;
+      }
+      #downloadBtn:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <h3>Pengaturan Posisi Teks</h3>
+
+      <div class="control-group">
+        <label for="posX"
+          >Posisi X (Horizontal):
+          <span class="value-display" id="posXValue">105</span> mm
+        </label>
+        <input type="range" id="posX" min="0" max="297" value="105" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label for="posY"
+          >Posisi Y (Vertikal):
+          <span class="value-display" id="posYValue">80</span> mm
+        </label>
+        <input type="range" id="posY" min="0" max="210" value="80" step="1" />
+      </div>
+
+      <div class="control-group">
+        <label for="fontSize"
+          >Ukuran Font:
+          <span class="value-display" id="fontSizeValue">40</span> pt
+        </label>
+        <input
+          type="range"
+          id="fontSize"
+          min="10"
+          max="62"
+          value="40"
+          step="1"
+        />
+      </div>
+
+      <button id="downloadBtn">Download Sertifikat</button>
+    </div>
+
+    <canvas id="previewCanvas"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+      const { jsPDF } = window.jspdf;
+      const canvas = document.getElementById("previewCanvas");
+      const ctx = canvas.getContext("2d");
+      let currentImage = null;
+
+      // Ambil nilai dari localStorage (jika tersedia)
+      const namaPeserta = localStorage.getItem("namaPeserta") || "Contoh Nama";
+      const sebagai = localStorage.getItem("sebagai") || "";
+      const posXStorage = localStorage.getItem("textX");
+      const posYStorage = localStorage.getItem("textY");
+      const fontSizeStorage = localStorage.getItem("fontSize");
+
+      // Set nilai default input dari localStorage jika tersedia
+      if (posXStorage) document.getElementById("posX").value = posXStorage;
+      if (posYStorage) document.getElementById("posY").value = posYStorage;
+      if (fontSizeStorage)
+        document.getElementById("fontSize").value = fontSizeStorage;
+
+      const img = new Image();
+      img.src = "img/front.jpg";
+      img.onload = function () {
+        currentImage = img;
+        updatePreview();
+        setupEventListeners();
+      };
+
+      function updateValueDisplays() {
+        document.getElementById("posXValue").textContent =
+          document.getElementById("posX").value;
+        document.getElementById("posYValue").textContent =
+          document.getElementById("posY").value;
+        document.getElementById("fontSizeValue").textContent =
+          document.getElementById("fontSize").value;
+      }
+
+      function updatePreview() {
+        if (!currentImage) return;
+
+        const scaleFactor = Math.min(
+          800 / currentImage.width,
+          600 / currentImage.height
+        );
+        canvas.width = currentImage.width * scaleFactor;
+        canvas.height = currentImage.height * scaleFactor;
+
+        ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+
+        const posX = parseInt(document.getElementById("posX").value);
+        const posY = parseInt(document.getElementById("posY").value);
+        const fontSize = parseInt(document.getElementById("fontSize").value);
+
+        const mmToPx = canvas.width / 297;
+        const previewX = posX * mmToPx;
+        const previewY = posY * mmToPx;
+        const previewFontSize = fontSize * mmToPx * 0.35;
+
+        ctx.font = `${previewFontSize}px Tinos`;
+        const textWidth = ctx.measureText(namaPeserta).width;
+
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+          previewX - textWidth / 2,
+          previewY - previewFontSize,
+          textWidth,
+          previewFontSize * 1.2
+        );
+        ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
+        ctx.fillRect(
+          previewX - textWidth / 2,
+          previewY - previewFontSize,
+          textWidth,
+          previewFontSize * 1.2
+        );
+
+        ctx.fillStyle = "red";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(namaPeserta, previewX, previewY);
+
+        updateValueDisplays();
+      }
+
+      function setupEventListeners() {
+        document
+          .getElementById("posX")
+          .addEventListener("input", updatePreview);
+        document
+          .getElementById("posY")
+          .addEventListener("input", updatePreview);
+        document
+          .getElementById("fontSize")
+          .addEventListener("input", updatePreview);
+
+        document
+          .getElementById("downloadBtn")
+          .addEventListener("click", function () {
+            const posX = parseFloat(document.getElementById("posX").value);
+            const posY = parseFloat(document.getElementById("posY").value);
+            const fontSize = parseInt(
+              document.getElementById("fontSize").value
+            );
+
+            const doc = new jsPDF({
+              orientation:
+                currentImage.width > currentImage.height
+                  ? "landscape"
+                  : "portrait",
+              unit: "mm",
+            });
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const imgRatio = currentImage.width / currentImage.height;
+
+            let imgWidth = pageWidth;
+            let imgHeight = pageWidth / imgRatio;
+
+            if (imgHeight > pageHeight) {
+              imgHeight = pageHeight;
+              imgWidth = pageHeight * imgRatio;
+            }
+
+            doc.addImage(
+              currentImage,
+              "JPEG",
+              (pageWidth - imgWidth) / 2,
+              (pageHeight - imgHeight) / 2,
+              imgWidth,
+              imgHeight
+            );
+
+            doc.setFont("Tinos", "italic");
+            doc.setFontSize(fontSize);
+            doc.setTextColor(0, 0, 0);
+            doc.text(namaPeserta, posX, posY, { align: "center" });
+
+            doc.save(`sertifikat-${namaPeserta.replace(/\s+/g, "-")}.pdf`);
+          });
+      }
+    </script>
+  </body>
+</html>

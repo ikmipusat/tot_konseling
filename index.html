@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Download Sertifikat</title>
+    <!-- Favicon SVG -->
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+
+    <!-- Bootstrap 5 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+
+    <style>
+      .form-header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .form-banner {
+        width: 100%;
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container mt-5" id="halaman">
+      <img
+        src="https://drive.google.com/thumbnail?id=1BUVSyqGc1MjQSc6lrRe7AtXdh_xIYGUT&sz=w1000 "
+        alt="Banner"
+        class="form-banner w-100 mb-4"
+      />
+      <h1 class="mb-4" style="text-align: center">Download Sertifikat</h1>
+      <h1 class="mb-4" style="text-align: center" id="judul"></h1>
+
+      <!-- Pencarian -->
+      <div class="mb-3">
+        <input
+          type="text"
+          id="searchInput"
+          class="form-control"
+          placeholder="Cari berdasarkan Nomor, Nama, atau Sebagai..."
+        />
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered" id="pesertaTable">
+          <thead>
+            <tr id="tableHead"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div id="loading" class="text-center text-muted">Memuat data...</div>
+      <div id="error" class="alert alert-danger d-none mt-3"></div>
+    </div>
+
+    <script>
+      const apiUrl =
+        "https://script.google.com/macros/s/AKfycbxGJpEgWsD58enSAVgKtIfKzo-Hd0KKTbP_t4Lesk8-U03g9M8_Yzq32jATen_POMgVTA/exec?page=api";
+
+      let allData = [];
+
+      function fetchAndRenderData(showLoading = false) {
+        const halaman = document.getElementById("halaman");
+        if (showLoading) {
+          halaman.style.display = "none";
+          Swal.fire({
+            title: "Memuat data...",
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading(),
+          });
+        }
+
+        fetch(apiUrl)
+          .then((response) => {
+            if (!response.ok) throw new Error("Network response was not ok");
+            return response.json();
+          })
+          .then((data) => {
+            if (showLoading) Swal.close();
+
+            document.getElementById("loading").style.display = "none";
+            halaman.style.display = "block";
+
+            if (data.length === 0) {
+              document.getElementById("error").textContent = "Data kosong.";
+              document.getElementById("error").classList.remove("d-none");
+              return;
+            }
+            // console.log(data.data);
+            allData = data.data; // Simpan data untuk pencarian
+
+            const judul = data.judul;
+            if (judul) {
+              document.getElementById("judul").textContent = judul;
+              localStorage.setItem("judul", judul);
+            }
+
+            const searchQuery = document
+              .getElementById("searchInput")
+              .value.toLowerCase();
+            const filtered = filterData(searchQuery);
+            renderTable(filtered);
+          })
+          .catch((err) => {
+            if (showLoading) Swal.close();
+            Swal.fire({
+              icon: "error",
+              title: "Gagal memuat data",
+              text: err.message,
+            });
+          });
+      }
+
+      function filterData(query) {
+        return allData.filter((row) => {
+          return (
+            row["No"]?.toLowerCase().includes(query) ||
+            row["Nama dan Gelar"]?.toLowerCase().includes(query) ||
+            row["Sebagai"]?.toLowerCase().includes(query)
+          );
+        });
+      }
+
+      function renderTable(data) {
+        const tableHead = document.getElementById("tableHead");
+        const tableBody = document.getElementById("tableBody");
+
+        tableHead.innerHTML = "";
+        tableBody.innerHTML = "";
+
+        if (data.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="99" class="text-center text-muted">Tidak ada hasil ditemukan.</td></tr>`;
+          return;
+        }
+
+        // Header
+        Object.keys(data[0]).forEach((key) => {
+          const th = document.createElement("th");
+          th.textContent = key;
+          tableHead.appendChild(th);
+        });
+        const thAksi = document.createElement("th");
+        thAksi.textContent = "AKSI";
+        tableHead.appendChild(thAksi);
+
+        // Body
+        data.forEach((row) => {
+          const tr = document.createElement("tr");
+
+          Object.values(row).forEach((cell) => {
+            const td = document.createElement("td");
+            td.textContent = cell;
+            tr.appendChild(td);
+          });
+
+          const tdAksi = document.createElement("td");
+          const button = document.createElement("button");
+          button.className = "btn btn-sm btn-primary";
+          button.textContent = "Download";
+          button.onclick = () => {
+            Swal.fire({
+              title: "Mempersiapkan sertifikat...",
+              text: "Sertifikat akan segera diunduh.",
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+                setTimeout(() => {
+                  generateCertificate(
+                    row["Nama dan Gelar"],
+                    row["Sebagai"],
+                    149,
+                    65,
+                    25,
+                    "italic"
+                  );
+                  Swal.close();
+                }, 1000);
+              },
+            });
+          };
+          tdAksi.appendChild(button);
+          tr.appendChild(tdAksi);
+          tableBody.appendChild(tr);
+        });
+      }
+
+      function generateCertificate(
+        nama,
+        sebagai,
+        posX,
+        posY,
+        fontSize = 10,
+        fontStyle = "italic"
+      ) {
+        localStorage.setItem("namaPeserta", nama);
+        localStorage.setItem("sebagai", sebagai);
+        localStorage.setItem("textX", posX);
+        localStorage.setItem("textY", posY);
+        localStorage.setItem("fontSize", fontSize);
+        localStorage.setItem("fontStyle", fontStyle);
+        window.open("cetak.html");
+      }
+
+      // Awal: fetch dengan loading
+      fetchAndRenderData(true);
+
+      // Polling tanpa loading setiap 2 detik
+      setInterval(() => fetchAndRenderData(false), 2000);
+
+      // Event pencarian
+      document
+        .getElementById("searchInput")
+        .addEventListener("input", function () {
+          const query = this.value.toLowerCase();
+          const filtered = filterData(query);
+          renderTable(filtered);
+        });
+    </script>
+  </body>
+</html>
